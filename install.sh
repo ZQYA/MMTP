@@ -9,3 +9,6 @@ if [[ -d "$par/ZLTCPTransfer" ]]; then
 else
 	git clone git@github.com:ZQYA/ZLTCPTransfer.git --branch develop
 fi
+
+cd $curpath
+make
