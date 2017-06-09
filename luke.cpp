@@ -32,7 +32,7 @@ void destory_mmtp(struct mmtp *mp) {
 
 
 int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
-	while(mp->magic_read_size != 6) {
+	while(mp->magic_read_size != 6) { /// read 6 bytes
 		int magic_need_read_size = 6-mp->magic_read_size;
 		int read_size = dk_read(sf_fd,mp->magic+mp->magic_read_size,magic_need_read_size);	
 		if(read_size<0) {
@@ -49,7 +49,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 		}
 	}
 	
-	if(!mp->has_read_first_and_type) {
+	if(!mp->has_read_first_and_type) { /// read 1 byte
 		char tp_first_byte = 0;
 		int readsize = dk_read(sf_fd,&tp_first_byte,1);	
 		if(readsize<0) {
@@ -60,7 +60,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 		}
 	}
 
-	if(mp->blank_read_size==0) {
+	if(mp->blank_read_size==0) { /// read 1 byte
 		char tp_blank_byte = 0;
 		int read_size = dk_read(sf_fd,&tp_blank_byte,1);	
 		if (read_size<0) {
@@ -69,7 +69,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 		}
 	}
 	
-	while(mp->reserve_read_size != 4) {
+	while(mp->reserve_read_size != 4) { /// read 4 bytes
 		int read_size = dk_read(sf_fd,(char*)mp->reserve+(mp->reserve_read_size),4-mp->reserve_read_size);
 		if(read_size<0) {
 		}else {
@@ -77,28 +77,22 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 		}
 	}
 
-	while(mp->content_length_has_read_size!= 4) {
-		int read_size = dk_read(sf_fd,(char*)mp->content_length+(mp->content_length_has_read_size),4-mp->content_length_has_read_size);
+	while(mp->content_length_has_read_size!= 4) { /// read 4 bytes
+		int read_size = dk_read(sf_fd,(char*)(&mp->content_length)+(mp->content_length_has_read_size),4-mp->content_length_has_read_size);
 		if(read_size<0) {
 		}else {
 			mp->content_length_has_read_size+= read_size;
 		}
 	}
 	
-	while(mp->all_content_length_has_read_size!= 4) {
-		int read_size = dk_read(sf_fd,(char*)mp->all_content_length+(mp->all_content_length_has_read_size),4-mp->all_content_length_has_read_size);
-		if(read_size<0) {
-		}else {
-			mp->all_content_length_has_read_size+= read_size;
-		}
-	}
-	
-
-	if(mp->is_first&&mp->content!=NULL){
+	if(mp->is_first&&NULL == mp->content){
+		mp->content = (char*)malloc(mp->content_length);
+		bzero(mp->content,mp->content_length);
+	}else if(mp->is_first&&mp->content!=NULL){
 		free(mp->content);
 		mp->content = NULL;
-		mp->content = (char*)malloc(mp->all_content_length);
-   	}	
+		mp->content = (char*)malloc(mp->content_length);
+   	}
 	
 	while(mp->content_has_read_size!=mp->content_length){
 		int read_size =	dk_read(sf_fd,mp->content+mp->content_has_read_size,mp->content_length-mp->content_has_read_size);
@@ -110,7 +104,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	return 0;
 }	
 int mp_write(SOCKET sf_fd, char *data, size_t n, int filetype, bool isfirst) {
-	char *content = (char *)malloc(n + 16);	
+	char *content = (char *)malloc(n + 17);	
 	bzero(content,n+16);
 	strcat(content,"\r\nmmtp");
 	char tp_first_byte = 0x00;

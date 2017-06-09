@@ -12,8 +12,6 @@ struct mmtp {
 	unsigned int reserve_read_size = 0;
 	int32_t content_length = 0; // contents whole size
 	unsigned int content_length_has_read_size = 0; // content length has read size;
-	int32_t all_content_length = 0;	 // all content length
-	unsigned int all_content_length_has_read_size = 0; // content length has read size;
 	char *content = NULL ; 
 	int32_t content_has_read_size = 0;
 };
