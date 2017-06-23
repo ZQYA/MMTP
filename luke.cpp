@@ -11,35 +11,36 @@ void initilizer_mmtp(struct mmtp *mp) {
 	bzero(mp->reserve,4);
 	mp->content = NULL; 
 } 
-void destory_mmtp(struct mmtp *mp) {
-	if(mp->magic!=NULL) {
-		free(mp->magic);
-		mp->magic = NULL;
+void destory_mmtp(struct mmtp **mp) {
+	if((*mp)->magic!=NULL) {
+		free((*mp)->magic);
+		(*mp)->magic = NULL;
 	}
-	if(mp->reserve != NULL) {
-		free(mp->reserve);
-		mp->reserve = NULL;
+	if((*mp)->reserve != NULL) {
+		free((*mp)->reserve);
+		(*mp)->reserve = NULL;
 	}
-	if(mp->content != NULL) { 
-		free(mp->content);
-		mp->content = NULL;
-	}
-	if(mp!=NULL){
-		free(mp);
-		mp = NULL;
+	if((*mp)->content != NULL) { 
+		free((*mp)->content);
+		(*mp)->content = NULL;
 	}
 }
 
+void mp_clear_close(SOCKET sf_fd,struct mmtp **mp) {
+	destory_mmtp(mp);
+	close(sf_fd);	
+}
 
 int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
+	int all_read_size = 0;
 	while(mp->magic_read_size != 6) { /// read 6 bytes
 		int magic_need_read_size = 6-mp->magic_read_size;
 		int read_size = dk_read(sf_fd,mp->magic+mp->magic_read_size,magic_need_read_size);	
-		if(read_size<0) {
-			bzero(mp->magic,6);	
-			mp->magic_read_size = 0;
-			close(sf_fd); /// ???? need change to shutdown 
+		if(read_size<=0) {
+			mp_clear_close(sf_fd,&mp);	
+			return 0;
 		}else {
+			all_read_size += read_size;
 			if(0 == strncmp(mp->magic,"\r\nmmtp",6)) {
 				mp->magic_read_size = 6;	
 			}else {
@@ -51,9 +52,12 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	
 	if(!mp->has_read_first_and_type) { /// read 1 byte
 		char tp_first_byte = 0;
-		int readsize = dk_read(sf_fd,&tp_first_byte,1);	
-		if(readsize<0) {
+		int read_size = dk_read(sf_fd,&tp_first_byte,1);	
+		if(read_size<=0) {
+			mp_clear_close(sf_fd,&mp);	
+			return 0;
 		}else {
+			all_read_size += read_size;
 			mp->is_first = tp_first_byte & 0x04;
 			mp->type = tp_first_byte & 0x03; 		
 			mp->has_read_first_and_type = true;
@@ -63,24 +67,33 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	if(mp->blank_read_size==0) { /// read 1 byte
 		char tp_blank_byte = 0;
 		int read_size = dk_read(sf_fd,&tp_blank_byte,1);	
-		if (read_size<0) {
+		if (read_size<=0) {
+			mp_clear_close(sf_fd,&mp);	
+			return 0;
 		}else  {
+			all_read_size += read_size;
 			mp->blank_read_size = 1;
 		}
 	}
 	
 	while(mp->reserve_read_size != 4) { /// read 4 bytes
 		int read_size = dk_read(sf_fd,(char*)mp->reserve+(mp->reserve_read_size),4-mp->reserve_read_size);
-		if(read_size<0) {
+		if(read_size<=0) {
+			mp_clear_close(sf_fd,&mp);	
+			return 0;
 		}else {
+			all_read_size += read_size;
 			mp->reserve_read_size += read_size;
 		}
 	}
 
 	while(mp->content_length_has_read_size!= 4) { /// read 4 bytes
 		int read_size = dk_read(sf_fd,(char*)(&mp->content_length)+(mp->content_length_has_read_size),4-mp->content_length_has_read_size);
-		if(read_size<0) {
+		if(read_size<=0) {
+			mp_clear_close(sf_fd,&mp);	
+			return 0;
 		}else {
+			all_read_size += read_size;
 			mp->content_length_has_read_size+= read_size;
 		}
 	}
@@ -96,12 +109,15 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	
 	while(mp->content_has_read_size!=mp->content_length){
 		int read_size =	dk_read(sf_fd,mp->content+mp->content_has_read_size,mp->content_length-mp->content_has_read_size);
-		if( read_size < 0  ) {
+		if( read_size <= 0  ) {
+			mp_clear_close(sf_fd,&mp);	
+			return 0;
 		}else {
+			all_read_size += read_size;
 			mp->content_has_read_size+=read_size;
 		}
 	}
-	return 0;
+	return all_read_size;
 }	
 int mp_write(SOCKET sf_fd, char *data, size_t n, int filetype, bool isfirst) {
 	char *content = (char *)malloc(n + 17);	
