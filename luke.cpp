@@ -146,7 +146,7 @@ int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype) {
 	size_t read_size = 0;
 	while((read_size = read(fd,buffer,file_write_segment_max))) {
 		if(read_size > 0) {
-			size_t write_size = mp_write(sf_fd,buffer,read_size,filetype,read_size<file_write_segment_max?true:false);
+			size_t write_size = mp_write(sf_fd,buffer,read_size,filetype,all_write_size==0?true:false);
 			if(write_size>0) {
 				all_write_size += write_size;
 			}else if (write_size<=0) {

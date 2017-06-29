@@ -5,7 +5,7 @@ struct mmtp {
 	char *magic = NULL;  // 6 bytes magic 
 	unsigned int magic_read_size = 0; /// magic has read size
 	char type = 0;	 // media type ： string , img , video
-	bool is_first = false;  // is the first 
+	bool is_first = true;  // is the first
 	bool has_read_first_and_type = false ; // 
 	unsigned int blank_read_size = false; //
 	char *reserve = NULL; //
