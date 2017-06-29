@@ -4,6 +4,9 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <strings.h>
+#include <fcntl.h>
+#include <cstdio>
+const size_t file_write_segment_max = 1024;
 void initilizer_mmtp(struct mmtp *mp) {
 	mp->magic = (char *)malloc(6);		
 	bzero(mp->magic,6);
@@ -98,15 +101,13 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 		}
 	}
 	
-	if(mp->is_first&&NULL == mp->content){
-		mp->content = (char*)malloc(mp->content_length);
-		bzero(mp->content,mp->content_length);
-	}else if(mp->is_first&&mp->content!=NULL){
+	if(mp->content!=NULL){
 		free(mp->content);
 		mp->content = NULL;
-		mp->content = (char*)malloc(mp->content_length);
-   	}
-	
+	}
+	mp->content = (char*)malloc(mp->content_length);
+	bzero(mp->content,mp->content_length);
+
 	while(mp->content_has_read_size!=mp->content_length){
 		int read_size =	dk_read(sf_fd,mp->content+mp->content_has_read_size,mp->content_length-mp->content_has_read_size);
 		if( read_size <= 0  ) {
@@ -119,6 +120,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	}
 	return all_read_size;
 }	
+
 int mp_write(SOCKET sf_fd, char *data, size_t n, int filetype, bool isfirst) {
 	char *content = (char *)malloc(n + 17);	
 	bzero(content,n+16);
@@ -131,4 +133,27 @@ int mp_write(SOCKET sf_fd, char *data, size_t n, int filetype, bool isfirst) {
 	memcpy(content+12,&content_length,4);
 	memcpy(content+16,data,n);
 	return 	dk_write(sf_fd, content, n+16);
+}
+
+int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype) {
+	int fd = open(filename,O_RDONLY);	
+	if(fd<0) {
+		perror("file open error");
+	}
+	size_t all_write_size = 0;
+	char buffer[file_write_segment_max];
+	bzero(buffer, file_write_segment_max);
+	size_t read_size = 0;
+	while((read_size = read(fd,buffer,file_write_segment_max))) {
+		if(read_size > 0) {
+			size_t write_size = mp_write(sf_fd,buffer,read_size,filetype,read_size<file_write_segment_max?true:false);
+			if(write_size>0) {
+				all_write_size += write_size;
+			}else if (write_size<=0) {
+				perror("write faield");
+				break;
+			}
+		}
+	}
+	return all_write_size;
 }

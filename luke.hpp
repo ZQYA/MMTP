@@ -22,3 +22,5 @@ void destory_mmtp(struct mmtp *mp) ;
 int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp);
 /// write data acoordig the format.h file define
 int mp_write(SOCKET sf_fd, char *data, size_t n, int filetype, bool isfirst);
+/// copy file to the server
+int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype);
