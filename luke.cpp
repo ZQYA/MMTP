@@ -121,7 +121,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	return all_read_size;
 }	
 
-int mp_write(SOCKET sf_fd, char *data, size_t n, int filetype, bool isfirst) {
+int mp_write(SOCKET sf_fd, const char *data, size_t n, int filetype, bool isfirst) {
 	char *content = (char *)malloc(n + 17);	
 	bzero(content,n+16);
 	strcat(content,"\r\nmmtp");
@@ -129,7 +129,7 @@ int mp_write(SOCKET sf_fd, char *data, size_t n, int filetype, bool isfirst) {
 	tp_first_byte |= isfirst?0x04:0x00;
 	tp_first_byte |= filetype;
 	memcpy(content+6,&tp_first_byte,1);
-	int32_t content_length = n;
+	size_t content_length = n;
 	memcpy(content+12,&content_length,4);
 	memcpy(content+16,data,n);
 	return 	dk_write(sf_fd, content, n+16);
@@ -138,7 +138,7 @@ int mp_write(SOCKET sf_fd, char *data, size_t n, int filetype, bool isfirst) {
 int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype) {
 	int fd = open(filename,O_RDONLY);	
 	if(fd<0) {
-		perror("file open error");
+		dk_perror("file open error");
 	}
 	size_t all_write_size = 0;
 	char buffer[file_write_segment_max];
@@ -150,7 +150,7 @@ int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype) {
 			if(write_size>0) {
 				all_write_size += write_size;
 			}else if (write_size<=0) {
-				perror("write faield");
+				dk_perror("write faield");
 				break;
 			}
 		}

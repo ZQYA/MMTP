@@ -16,11 +16,11 @@ struct mmtp {
 	int32_t content_has_read_size = 0;
 };
 void initilizer_mmtp(struct mmtp *mp);
-void destory_mmtp(struct mmtp *mp) ;
+void destory_mmtp(struct mmtp **mp) ;
 /// clear and reset mp struct properties
 /// read data acoordig the format.h file define
 int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp);
 /// write data acoordig the format.h file define
-int mp_write(SOCKET sf_fd, char *data, size_t n, int filetype, bool isfirst);
+int mp_write(SOCKET sf_fd, const char *data, size_t n, int filetype, bool isfirst);
 /// copy file to the server
 int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype);
