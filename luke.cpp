@@ -6,6 +6,7 @@
 #include <strings.h>
 #include <fcntl.h>
 #include <cstdio>
+#include <algorithm>
 const size_t file_write_segment_max = 1024;
 void initilizer_mmtp(struct mmtp *mp) {
 	mp->magic = (char *)malloc(6);		
@@ -121,7 +122,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	return all_read_size;
 }	
 
-int mp_write(SOCKET sf_fd, const char *data, size_t n, int filetype, bool isfirst) {
+ssize_t mp_write(SOCKET sf_fd, const char *data, size_t n, int filetype, bool isfirst,const char *options) {
 	char *content = (char *)malloc(n + 17);	
 	bzero(content,n+16);
 	strcat(content,"\r\nmmtp");
@@ -129,13 +130,16 @@ int mp_write(SOCKET sf_fd, const char *data, size_t n, int filetype, bool isfirs
 	tp_first_byte |= isfirst?0x04:0x00;
 	tp_first_byte |= filetype;
 	memcpy(content+6,&tp_first_byte,1);
+    if (options != NULL) {
+        memcpy(content+8,options,std::min(strlen(options),(size_t)4));
+    }
 	size_t content_length = n;
 	memcpy(content+12,&content_length,4);
 	memcpy(content+16,data,n);
 	return 	dk_write(sf_fd, content, n+16);
 }
 
-int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype) {
+int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype,const char *device_token) {
 	int fd = open(filename,O_RDONLY);	
 	if(fd<0) {
 		dk_perror("file open error");
@@ -146,7 +150,7 @@ int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype) {
 	size_t read_size = 0;
 	while((read_size = read(fd,buffer,file_write_segment_max))) {
 		if(read_size > 0) {
-			size_t write_size = mp_write(sf_fd,buffer,read_size,filetype,all_write_size==0?true:false);
+			size_t write_size = mp_write(sf_fd,buffer,read_size,filetype,all_write_size==0?true:false,device_token);
 			if(write_size>0) {
 				all_write_size += write_size;
 			}else if (write_size<=0) {

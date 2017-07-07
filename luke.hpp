@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <cstddef>
+#include <sys/_types/_ssize_t.h>
 typedef int SOCKET;
 struct mmtp {
 	char *magic = NULL;  // 6 bytes magic 
@@ -21,6 +22,12 @@ void destory_mmtp(struct mmtp **mp) ;
 /// read data acoordig the format.h file define
 int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp);
 /// write data acoordig the format.h file define
-int mp_write(SOCKET sf_fd, const char *data, size_t n, int filetype, bool isfirst);
+/// now use options as device token
+/// we use 'reserve' section to store options.
+/// so according to the format.hpp file 
+/// the options' size must le than 4 bytes.
+/// and as the decliare. we dont provide a param for user to apply the size of the options.
+/// the options must be a c string that end with a '\0'
+ssize_t mp_write(SOCKET sf_fd, const char *data, size_t n, int filetype, bool isfirst, const char *options);
 /// copy file to the server
-int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype);
+int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype, const char *options);
