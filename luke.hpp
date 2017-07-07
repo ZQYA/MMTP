@@ -14,7 +14,11 @@ struct mmtp {
 	int32_t content_length = 0; // contents whole size
 	unsigned int content_length_has_read_size = 0; // content length has read size;
 	char *content = NULL ; 
+	char *options = NULL ; /// must be a cstring end with '\0'
+	unsigned int option_length_has_read_size = 0;
+	int32_t option_length = 0;
 	int32_t content_has_read_size = 0;
+	int option_has_read_size = 0;
 };
 void initilizer_mmtp(struct mmtp *mp);
 void destory_mmtp(struct mmtp **mp) ;
@@ -30,4 +34,4 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp);
 /// the options must be a c string that end with a '\0'
 ssize_t mp_write(SOCKET sf_fd, const char *data, size_t n, int filetype, bool isfirst, const char *options);
 /// copy file to the server
-int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype, const char *options);
+size_t mp_file_write(SOCKET sf_fd, const char * filename ,int filetype, const char *options);

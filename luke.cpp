@@ -28,6 +28,10 @@ void destory_mmtp(struct mmtp **mp) {
 		free((*mp)->content);
 		(*mp)->content = NULL;
 	}
+    if ((*mp)->options != NULL) {
+        free((*mp)->options);
+        (*mp)->options = NULL;
+    }
 }
 
 void mp_clear_close(SOCKET sf_fd,struct mmtp **mp) {
@@ -101,13 +105,34 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 			mp->content_length_has_read_size+= read_size;
 		}
 	}
+
+	while(mp->option_length_has_read_size != 4) {
+		int read_size = dk_read(sf_fd,(char*)(&mp->option_length)+(mp->option_length_has_read_size),4-mp->option_length_has_read_size);
+		if(read_size<=0) {
+			mp_clear_close(sf_fd,&mp);	
+			return 0;
+		}else {
+			all_read_size += read_size;
+			mp->option_length_has_read_size+= read_size;
+		}
+	}
 	
 	if(mp->content!=NULL){
 		free(mp->content);
 		mp->content = NULL;
 	}
+
+	if(mp->options != NULL) {
+		free(mp->options);
+		mp->options = NULL;
+	}
+
 	mp->content = (char*)malloc(mp->content_length);
 	bzero(mp->content,mp->content_length);
+	if(mp->option_length!=0){
+		mp->options = (char *)malloc(mp->option_length+1);
+		bzero(mp->options,mp->option_length+1);
+	}
 
 	while(mp->content_has_read_size!=mp->content_length){
 		int read_size =	dk_read(sf_fd,mp->content+mp->content_has_read_size,mp->content_length-mp->content_has_read_size);
@@ -119,27 +144,41 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 			mp->content_has_read_size+=read_size;
 		}
 	}
+
+	while(mp->option_has_read_size != mp->option_length) {
+		int read_size =	dk_read(sf_fd,mp->options+mp->option_has_read_size,mp->option_length-mp->option_has_read_size);
+		if( read_size <= 0  ) {
+			mp_clear_close(sf_fd,&mp);	
+			return 0;
+		}else {
+			all_read_size += read_size;
+			mp->option_has_read_size+=read_size;
+		}
+	}
+
 	return all_read_size;
 }	
 
 ssize_t mp_write(SOCKET sf_fd, const char *data, size_t n, int filetype, bool isfirst,const char *options) {
-	char *content = (char *)malloc(n + 17);	
-	bzero(content,n+16);
+	int32_t options_size =options==NULL?0:strlen(options);
+	char *content = (char *)malloc(n + n+20+options_size+1);
+	bzero(content,n+20+options_size);
 	strcat(content,"\r\nmmtp");
 	char tp_first_byte = 0x00;
 	tp_first_byte |= isfirst?0x04:0x00;
 	tp_first_byte |= filetype;
 	memcpy(content+6,&tp_first_byte,1);
-    if (options != NULL) {
-        memcpy(content+8,options,std::min(strlen(options),(size_t)4));
-    }
 	size_t content_length = n;
 	memcpy(content+12,&content_length,4);
-	memcpy(content+16,data,n);
-	return 	dk_write(sf_fd, content, n+16);
+	memcpy(content+16,&options_size,4);
+	memcpy(content+20,data,n);
+	if(options!=NULL) {
+		memcpy(content+20+n,options,options_size);
+	}
+	return 	dk_write(sf_fd, content, n+20+options_size);
 }
 
-int mp_file_write(SOCKET sf_fd, const char * filename ,int filetype,const char *device_token) {
+size_t mp_file_write(SOCKET sf_fd, const char * filename ,int filetype,const char *device_token) {
 	int fd = open(filename,O_RDONLY);	
 	if(fd<0) {
 		dk_perror("file open error");

@@ -6,6 +6,7 @@
  51-63: blank aligin 								2bytes	
  64-95:	reserve     								4bytes										 
  96-127:content length								4bytes 
- 
- if contents contains \r\nmmtp replace with \r\nmmtp
+ 128-160:optionis length 							4bytes  
+ content  .... options
+ //// options always are c string ended with '\0'
 **************************************end*************************************/
