@@ -43,7 +43,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	int all_read_size = 0;
 	while(mp->magic_read_size != 6) { /// read 6 bytes
 		int magic_need_read_size = 6-mp->magic_read_size;
-		int read_size = dk_read(sf_fd,mp->magic+mp->magic_read_size,magic_need_read_size);	
+		ssize_t read_size = dk_read(sf_fd,mp->magic+mp->magic_read_size,magic_need_read_size);
 		if(read_size<=0) {
 			mp_clear_close(sf_fd,&mp);	
 			return 0;
@@ -60,7 +60,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	
 	if(!mp->has_read_first_and_type) { /// read 1 byte
 		char tp_first_byte = 0;
-		int read_size = dk_read(sf_fd,&tp_first_byte,1);	
+		ssize_t read_size = dk_read(sf_fd,&tp_first_byte,1);
 		if(read_size<=0) {
 			mp_clear_close(sf_fd,&mp);	
 			return 0;
@@ -74,7 +74,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 
 	if(mp->blank_read_size==0) { /// read 1 byte
 		char tp_blank_byte = 0;
-		int read_size = dk_read(sf_fd,&tp_blank_byte,1);	
+		ssize_t read_size = dk_read(sf_fd,&tp_blank_byte,1);
 		if (read_size<=0) {
 			mp_clear_close(sf_fd,&mp);	
 			return 0;
@@ -85,7 +85,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	}
 	
 	while(mp->reserve_read_size != 4) { /// read 4 bytes
-		int read_size = dk_read(sf_fd,(char*)mp->reserve+(mp->reserve_read_size),4-mp->reserve_read_size);
+		ssize_t read_size = dk_read(sf_fd,(char*)mp->reserve+(mp->reserve_read_size),4-mp->reserve_read_size);
 		if(read_size<=0) {
 			mp_clear_close(sf_fd,&mp);	
 			return 0;
@@ -96,7 +96,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	}
 
 	while(mp->content_length_has_read_size!= 4) { /// read 4 bytes
-		int read_size = dk_read(sf_fd,(char*)(&mp->content_length)+(mp->content_length_has_read_size),4-mp->content_length_has_read_size);
+		ssize_t read_size = dk_read(sf_fd,(char*)(&mp->content_length)+(mp->content_length_has_read_size),4-mp->content_length_has_read_size);
 		if(read_size<=0) {
 			mp_clear_close(sf_fd,&mp);	
 			return 0;
@@ -107,7 +107,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	}
 
 	while(mp->option_length_has_read_size != 4) {
-		int read_size = dk_read(sf_fd,(char*)(&mp->option_length)+(mp->option_length_has_read_size),4-mp->option_length_has_read_size);
+		ssize_t read_size = dk_read(sf_fd,(char*)(&mp->option_length)+(mp->option_length_has_read_size),4-mp->option_length_has_read_size);
 		if(read_size<=0) {
 			mp_clear_close(sf_fd,&mp);	
 			return 0;
@@ -135,7 +135,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	}
 
 	while(mp->content_has_read_size!=mp->content_length){
-		int read_size =	dk_read(sf_fd,mp->content+mp->content_has_read_size,mp->content_length-mp->content_has_read_size);
+		ssize_t read_size =	dk_read(sf_fd,mp->content+mp->content_has_read_size,mp->content_length-mp->content_has_read_size);
 		if( read_size <= 0  ) {
 			mp_clear_close(sf_fd,&mp);	
 			return 0;
@@ -146,7 +146,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 	}
 
 	while(mp->option_has_read_size != mp->option_length) {
-		int read_size =	dk_read(sf_fd,mp->options+mp->option_has_read_size,mp->option_length-mp->option_has_read_size);
+		ssize_t read_size =	dk_read(sf_fd,mp->options+mp->option_has_read_size,mp->option_length-mp->option_has_read_size);
 		if( read_size <= 0  ) {
 			mp_clear_close(sf_fd,&mp);	
 			return 0;
@@ -160,7 +160,7 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 }	
 
 ssize_t mp_write(SOCKET sf_fd, const char *data, size_t n, int filetype, bool isfirst,const char *options) {
-	int32_t options_size =options==NULL?0:strlen(options);
+	size_t options_size =options==NULL?0:strlen(options);
 	char *content = (char *)malloc(n + n+20+options_size+1);
 	bzero(content,n+20+options_size);
 	strcat(content,"\r\nmmtp");

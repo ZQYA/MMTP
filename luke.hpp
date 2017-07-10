@@ -2,6 +2,8 @@
 #include <cstddef>
 #include <sys/_types/_ssize_t.h>
 typedef int SOCKET;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc++11-extensions"
 struct mmtp {
 	char *magic = NULL;  // 6 bytes magic 
 	unsigned int magic_read_size = 0; /// magic has read size
@@ -20,6 +22,8 @@ struct mmtp {
 	int32_t content_has_read_size = 0;
 	int option_has_read_size = 0;
 };
+#pragma clang diagnostic pop
+
 void initilizer_mmtp(struct mmtp *mp);
 void destory_mmtp(struct mmtp **mp) ;
 /// clear and reset mp struct properties
