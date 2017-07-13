@@ -21,6 +21,7 @@ struct mmtp {
 	int32_t option_length = 0;
 	int32_t content_has_read_size = 0;
 	int option_has_read_size = 0;
+	bool is_end = false;  /// according to the format file, if option end with 'mmtp\r\n' is_end = true;else false 
 };
 #pragma clang diagnostic pop
 

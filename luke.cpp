@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <cstdio>
 #include <algorithm>
+#include <sys/stat.h>
 const size_t file_write_segment_max = 1024;
 void initilizer_mmtp(struct mmtp *mp) {
 	mp->magic = (char *)malloc(6);		
@@ -155,13 +156,22 @@ int mp_read(SOCKET sf_fd, int *filetype, struct mmtp *mp) {
 			mp->option_has_read_size+=read_size;
 		}
 	}
-
+	if(mp->options == NULL) {
+		mp->is_end = true;
+	}
+	/// check the mmtp struct is an end segment
+	else if(strlen(mp->options)>6&&0==strcmp(mp->options+mp->option_length-7,"mmtp\r\n")){
+		mp->is_end = true;	
+		*(mp->options+mp->option_length-7)='\0';
+	} else {
+		mp->is_end = false;
+	} 
 	return all_read_size;
 }	
 
 ssize_t mp_write(SOCKET sf_fd, const char *data, size_t n, int filetype, bool isfirst,const char *options) {
-	size_t options_size =options==NULL?0:strlen(options);
-	char *content = (char *)malloc(n + n+20+options_size+1);
+	size_t options_size =options==NULL?0:(strlen(options)+1);
+	char *content = (char *)malloc(n+20+options_size);
 	bzero(content,n+20+options_size);
 	strcat(content,"\r\nmmtp");
 	char tp_first_byte = 0x00;
@@ -179,17 +189,45 @@ ssize_t mp_write(SOCKET sf_fd, const char *data, size_t n, int filetype, bool is
 }
 
 size_t mp_file_write(SOCKET sf_fd, const char * filename ,int filetype,const char *device_token) {
+	if(0 == filetype) {  //// text need special process
+        if (device_token != NULL) {
+    		char *end_token = (char *)malloc(strlen(device_token)+7);
+    		bzero(end_token,strlen(device_token)+7);
+    		strcat(end_token,device_token);
+    		strcat(end_token,"mmtp\r\n");
+    		ssize_t write_size = mp_write(sf_fd,filename,strlen(filename),filetype,true,end_token);
+    		return write_size;		
+        }else {
+    		ssize_t write_size = mp_write(sf_fd,filename,strlen(filename),filetype,true,device_token);
+    		return write_size;		
+        }
+	}
+
 	int fd = open(filename,O_RDONLY);	
 	if(fd<0) {
 		dk_perror("file open error");
 	}
+	struct stat st;
+	fstat(fd,&st);
 	size_t all_write_size = 0;
 	char buffer[file_write_segment_max];
 	bzero(buffer, file_write_segment_max);
 	size_t read_size = 0;
+    size_t all_read_size = 0;
+	off_t file_size = st.st_size;
 	while((read_size = read(fd,buffer,file_write_segment_max))) {
+		size_t write_size = 0;
 		if(read_size > 0) {
-			size_t write_size = mp_write(sf_fd,buffer,read_size,filetype,all_write_size==0?true:false,device_token);
+            all_read_size += read_size;
+			if(file_size == all_read_size) {
+				char *end_token = (char *)malloc(strlen(device_token)+7);
+				bzero(end_token,strlen(device_token)+7);
+				strcat(end_token,device_token);
+				strcat(end_token,"mmtp\r\n");
+				write_size = mp_write(sf_fd,buffer,read_size,filetype,all_write_size==0?true:false,end_token);
+			}else {
+				write_size = mp_write(sf_fd,buffer,read_size,filetype,all_write_size==0?true:false,device_token);
+			}
 			if(write_size>0) {
 				all_write_size += write_size;
 			}else if (write_size<=0) {
